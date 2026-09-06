@@ -21,51 +21,26 @@ target/
 # Logs
 *.log
 
+# Temporary files
+*.tmp
+
 # Python cache
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 
-# Temporary files
-*.tmp
-*.temp
-
-# OS files
-.DS_Store
-Thumbs.db
-
 # Coverage reports
 coverage/
 htmlcov/
 .coverage
 
-# Database related
-*.db
-*.sqlite
-*.sqlite3
-
-# Compressed files
-*.zip
-*.gz
+# Distribution / packaging
 *.tar
-*.tgz
-*.bz2
-*.xz
-*.7z
-*.rar
-*.zst
-*.lz4
-*.lzh
-*.cab
-*.arj
-*.rpm
-*.deb
-*.Z
-*.lz
-*.lzo
 *.tar.gz
-*.tar.bz2
-*.tar.xz
-*.tar.zst
+*.zip
+
+# OS generated files
+.DS_Store
+Thumbs.db
 ```
