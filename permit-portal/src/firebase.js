@@ -1,13 +1,17 @@
-// Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
-import { getAuth, signInWithPhoneNumber, RecaptchaVerifier } from "firebase/auth";
+import { 
+  getAuth, 
+  signInWithPhoneNumber, 
+  RecaptchaVerifier, 
+  GoogleAuthProvider, 
+  signInWithPopup 
+} from "firebase/auth";
 import { getFirestore, doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
-// Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyC8vmruhgNag1eJC81V5AancIptzqzXxCE",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyC8vmruhgNag1eJC81V5AancIptzqzXxCE",
   authDomain: "regcat-f0154.firebaseapp.com",
   projectId: "regcat-f0154",
   storageBucket: "regcat-f0154.firebasestorage.app",
@@ -16,16 +20,23 @@ const firebaseConfig = {
   measurementId: "G-JPZ19YDYGK"
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
+const googleProvider = new GoogleAuthProvider();
 
-// Recaptcha verifier will be initialized when needed
+export const loginWithGoogle = async () => {
+  try {
+    const result = await signInWithPopup(auth, googleProvider);
+    return result.user;
+  } catch (error) {
+    console.error("Google Auth Error:", error);
+    throw error;
+  }
+};
+
 let recaptchaVerifier = null;
-
 export const setupRecaptcha = (containerId) => {
   if (!recaptchaVerifier) {
     recaptchaVerifier = new RecaptchaVerifier(auth, containerId, {
@@ -97,9 +108,7 @@ export const uploadDocument = async (file, userId, fieldName) => {
   }
 };
 
-export const getCurrentUser = () => {
-  return auth.currentUser;
-};
+export const getCurrentUser = () => auth.currentUser;
 
 export const logout = async () => {
   try {

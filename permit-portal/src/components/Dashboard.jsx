@@ -1,92 +1,123 @@
-import React from 'react'
-import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { Building2, FileSearch, MapPin, Calculator, LogOut, User } from 'lucide-react'
+import React from 'react';
 
-const Dashboard = () => {
-  const navigate = useNavigate()
-  const user = JSON.parse(sessionStorage.getItem('user') || '{}')
-
-  const services = [
-    { icon: <Building2 size={32} />, title: 'New Building Permission', description: 'Apply for new building construction permits', color: '#0F2A43', path: '/compliance-form' },
-    { icon: <FileSearch size={32} />, title: 'Application Status', description: 'Track your application using reference number', color: '#1E4D7B', path: '#' },
-    { icon: <MapPin size={32} />, title: 'Plot Approval Checker', description: 'Verify plot approvals with GIS integration', color: '#0E7C7B', path: '/compliance-form' },
-    { icon: <Calculator size={32} />, title: 'Fee Calculator', description: 'Calculate development charges and fees', color: '#C98A2C', path: '#' }
-  ]
-
-  const handleLogout = () => {
-    sessionStorage.removeItem('user')
-    navigate('/')
-  }
-
+export default function Dashboard({ user, onStartNewForm, activeReports = [] }) {
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--light-bg)' }}>
-      <header style={{ background: 'var(--gradient-primary)', padding: '16px 0', boxShadow: 'var(--shadow-lg)' }}>
-        <div className="container">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div style={{ width: '50px', height: '50px', background: 'var(--white)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ fontSize: '28px' }}>🏛️</span>
-              </div>
-              <div>
-                <h1 style={{ color: 'var(--white)', fontSize: '20px', fontWeight: '700' }}>DTCP Permit Portal</h1>
-                <p style={{ color: 'var(--border-color)', fontSize: '12px' }}>Dashboard</p>
-              </div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 16px', background: 'rgba(255,255,255,0.1)', borderRadius: '12px' }}>
-                <User size={18} color="var(--white)" />
-                <span style={{ color: 'var(--white)', fontSize: '14px' }}>{user.phoneNumber || '+91 XXXXXXXXXX'}</span>
-              </div>
-              <button onClick={handleLogout} className="btn btn-outline" style={{ borderColor: 'var(--white)', color: 'var(--white)' }}>
-                <LogOut size={16} /> Logout
-              </button>
-            </div>
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased">
+      {/* Top Vercel-style Navigation Bar */}
+      <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200/80 px-6 py-3.5 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="h-7 w-7 rounded-lg bg-slate-900 text-white flex items-center justify-center font-bold text-sm tracking-tight">
+            R
+          </div>
+          <span className="font-semibold text-slate-900 tracking-tight text-sm">Regcat Permit Portal</span>
+          <span className="text-slate-300">/</span>
+          <span className="text-xs font-mono text-slate-500">TNCDBR-2019</span>
+        </div>
+
+        {/* Live System Status Pill */}
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:inline-flex items-center gap-2 px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 text-xs font-medium rounded-full">
+            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            TN-GIS & e-Services Online
+          </div>
+          <div className="h-8 w-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-xs font-medium text-slate-700">
+            {user?.email?.[0].toUpperCase() || 'U'}
           </div>
         </div>
       </header>
 
-      <section style={{ padding: '60px 0' }}>
-        <div className="container">
-          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="card" style={{ background: 'var(--gradient-primary)', color: 'var(--white)', marginBottom: '48px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '24px' }}>
-              <div>
-                <h2 style={{ fontSize: '32px', fontWeight: '700', marginBottom: '12px', fontFamily: 'Playfair Display, serif' }}>Welcome to DTCP Portal</h2>
-                <p style={{ fontSize: '16px', opacity: 0.9, maxWidth: '600px' }}>Access all urban planning services from a single dashboard.</p>
-              </div>
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <div style={{ textAlign: 'center', padding: '16px 24px', background: 'rgba(255,255,255,0.1)', borderRadius: '12px' }}>
-                  <div style={{ fontSize: '28px', fontWeight: '800' }}>0</div>
-                  <div style={{ fontSize: '12px', opacity: 0.8 }}>Active Applications</div>
-                </div>
-                <div style={{ textAlign: 'center', padding: '16px 24px', background: 'rgba(255,255,255,0.1)', borderRadius: '12px' }}>
-                  <div style={{ fontSize: '28px', fontWeight: '800' }}>0</div>
-                  <div style={{ fontSize: '12px', opacity: 0.8 }}>Approved</div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
+      {/* Main Content Area */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        {/* Welcome Header & Action */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-6">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Regulatory Dashboard</h1>
+            <p className="text-sm text-slate-500 mt-1">
+              Automated building approval & setback verification engine for Tamil Nadu.
+            </p>
+          </div>
+          <button
+            onClick={onStartNewForm}
+            className="inline-flex items-center justify-center px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium rounded-lg shadow-sm transition-all active:scale-[0.98] border border-slate-800"
+          >
+            + Start Compliance Check
+          </button>
+        </div>
 
-          <h3 style={{ fontSize: '24px', fontWeight: '700', color: 'var(--primary-dark)', marginBottom: '32px' }}>Our Services</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
-            {services.map((service, index) => (
-              <motion.div key={index} initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1, duration: 0.5 }} className="card" onClick={() => service.path !== '#' && navigate(service.path)} style={{ cursor: service.path !== '#' ? 'pointer' : 'default', border: '1px solid var(--border-color)', transition: 'all 0.3s ease' }} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-8px)'; e.currentTarget.style.boxShadow = 'var(--shadow-xl)' }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)' }}>
-                <div style={{ width: '64px', height: '64px', background: service.color, borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--white)', marginBottom: '20px' }}>{service.icon}</div>
-                <h4 style={{ fontSize: '18px', fontWeight: '700', color: 'var(--primary-dark)', marginBottom: '8px' }}>{service.title}</h4>
-                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>{service.description}</p>
-              </motion.div>
-            ))}
+        {/* Responsive Grid System: Mobile (1-col), Tablet (2-col), Desktop (3-col) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {/* Card 1: FSI Limit Calculator */}
+          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:border-slate-300 transition-all">
+            <div className="flex items-center justify-between text-xs font-medium text-slate-400 mb-2">
+              <span>RULE PARSER</span>
+              <span className="font-mono text-slate-900">Rule 35(2)</span>
+            </div>
+            <div className="text-3xl font-bold tracking-tight text-slate-900">1.75 - 2.0</div>
+            <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+              Standard Non-High Rise Floor Space Index under TNCDBR 2019 guidelines.
+            </p>
+          </div>
+
+          {/* Card 2: Maximum Plot Coverage */}
+          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:border-slate-300 transition-all">
+            <div className="flex items-center justify-between text-xs font-medium text-slate-400 mb-2">
+              <span>PLOT COVERAGE</span>
+              <span className="font-mono text-slate-900">Max 75%</span>
+            </div>
+            <div className="text-3xl font-bold tracking-tight text-slate-900">75%</div>
+            <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+              Mandatory minimum 25% unbuilt open space retention on plot boundary.
+            </p>
+          </div>
+
+          {/* Card 3: Groq AI Status */}
+          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:border-slate-300 transition-all md:col-span-2 lg:col-span-1">
+            <div className="flex items-center justify-between text-xs font-medium text-slate-400 mb-2">
+              <span>NEURAL ENGINE</span>
+              <span className="text-emerald-600 font-mono">Llama 3.3 70B</span>
+            </div>
+            <div className="text-3xl font-bold tracking-tight text-slate-900">Active</div>
+            <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+              Connected via Groq API key for automated variance reasoning & text generation.
+            </p>
           </div>
         </div>
-      </section>
 
-      <footer style={{ background: 'var(--primary-dark)', padding: '30px 0', marginTop: '60px', color: 'var(--white)' }}>
-        <div className="container" style={{ textAlign: 'center' }}>
-          <p style={{ fontSize: '13px', opacity: 0.8 }}>© 2024 Directorate of Town and Country Planning, Tamil Nadu | Helpline: 1800-425-3999</p>
+        {/* Recent Applications Table */}
+        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-200 bg-slate-50/50 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-slate-900">Recent Applications</h2>
+            <span className="text-xs text-slate-500 font-mono">{activeReports.length} Submitted</span>
+          </div>
+          {activeReports.length === 0 ? (
+            <div className="p-12 text-center">
+              <p className="text-sm text-slate-500">No applications created yet.</p>
+              <button
+                onClick={onStartNewForm}
+                className="mt-3 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+              >
+                Create your first compliance audit &rarr;
+              </button>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100 text-sm">
+              {activeReports.map((report, idx) => (
+                <div key={idx} className="p-4 px-6 flex items-center justify-between hover:bg-slate-50/80 transition-colors">
+                  <div>
+                    <div className="font-medium text-slate-900">{report.buildingType || 'Residential Plot'}</div>
+                    <div className="text-xs text-slate-500 font-mono">Area: {report.plotArea} sq.m | Road: {report.roadWidth}m</div>
+                  </div>
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                    report.overallStatus === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
+                  }`}>
+                    {report.overallStatus}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      </footer>
+      </main>
     </div>
-  )
+  );
 }
-
-export default Dashboard

@@ -1,362 +1,127 @@
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { Shield, Lock, Smartphone, CheckCircle, AlertCircle } from 'lucide-react'
-import { sendOTP, verifyOTP, saveFormDraft } from '../firebase'
+import React, { useState } from 'react';
+import { sendOTP, verifyOTP, loginWithGoogle } from '../firebase';
 
-const AuthPage = () => {
-  const navigate = useNavigate()
-  const [isLogin, setIsLogin] = useState(true)
-  const [mobileNumber, setMobileNumber] = useState('')
-  const [otp, setOtp] = useState('')
-  const [step, setStep] = useState(1)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [confirmationResult, setConfirmationResult] = useState(null)
-  const [verified, setVerified] = useState(false)
+export default function AuthPage({ onAuthSuccess }) {
+  const [phone, setPhone] = useState('');
+  const [otp, setOtp] = useState('');
+  const [confirmationResult, setConfirmationResult] = useState(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSendOTP = async () => {
-    if (mobileNumber.length !== 10) {
-      setError('Please enter a valid 10-digit mobile number')
-      return
-    }
-    setLoading(true)
-    setError('')
+  const handleGoogleLogin = async () => {
+    setError('');
     try {
-      // For demo purposes, we'll simulate OTP
-      // In production, use: const result = await sendOTP('+91' + mobileNumber, 'recaptcha-container')
-      setTimeout(() => {
-        setConfirmationResult({ confirm: async (code) => ({ user: { uid: 'demo-user-id', phoneNumber: '+91' + mobileNumber } }) })
-        setStep(2)
-        setLoading(false)
-      }, 1500)
+      const user = await loginWithGoogle();
+      if (user && onAuthSuccess) onAuthSuccess(user);
     } catch (err) {
-      setError('Failed to send OTP. Please try again.')
-      setLoading(false)
+      setError('Google Sign-In failed: ' + (err.message || 'Check Firebase authorized domains.'));
     }
-  }
+  };
 
-  const handleVerifyOTP = async () => {
-    if (otp.length !== 6) {
-      setError('Please enter a valid 6-digit OTP')
-      return
-    }
-    setLoading(true)
-    setError('')
+  const handleSendOtp = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
     try {
-      // Simulate OTP verification
-      setTimeout(async () => {
-        const user = await confirmationResult.confirm(otp)
-        setVerified(true)
-        setLoading(false)
-        // Save to session storage
-        sessionStorage.setItem('user', JSON.stringify({ uid: user.user.uid, phoneNumber: user.user.phoneNumber }))
-        // Navigate to dashboard after short delay
-        setTimeout(() => navigate('/dashboard'), 1000)
-      }, 1500)
+      const result = await sendOTP(phone, 'recaptcha-container');
+      setConfirmationResult(result);
     } catch (err) {
-      setError('Invalid OTP. Please try again.')
-      setLoading(false)
+      setError('Failed to send OTP: Ensure phone format includes country code (e.g. +91) and domain is authorized.');
+    } finally {
+      setLoading(false);
     }
-  }
+  };
+
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      const user = await verifyOTP(confirmationResult, otp);
+      if (user && onAuthSuccess) onAuthSuccess(user);
+    } catch (err) {
+      setError('Invalid OTP code. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'var(--gradient-hero)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '40px 20px'
-    }}>
-      <div className="container">
-        <motion.div
-          initial={{ opacity: 0, y: 50 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          style={{ maxWidth: '500px', margin: '0 auto' }}
-        >
-          <div className="card" style={{ padding: '48px' }}>
-            {/* Header */}
-            <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-              <div style={{
-                width: '80px',
-                height: '80px',
-                background: 'var(--gradient-primary)',
-                borderRadius: '20px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 24px',
-                boxShadow: 'var(--shadow-lg)'
-              }}>
-                <Shield size={40} color="var(--white)" />
-              </div>
-              <h2 style={{
-                fontSize: '28px',
-                fontWeight: '700',
-                color: 'var(--primary-dark)',
-                marginBottom: '8px',
-                fontFamily: 'Playfair Display, serif'
-              }}>
-                {isLogin ? 'Welcome Back' : 'Create Account'}
-              </h2>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
-                {isLogin ? 'Sign in to access your dashboard' : 'Register for permit services'}
-              </p>
-            </div>
-
-            {/* Progress Steps */}
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginBottom: '32px' }}>
-              {[1, 2].map((s) => (
-                <div key={s} style={{
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '50%',
-                  background: step >= s ? 'var(--gradient-primary)' : 'var(--paper)',
-                  color: step >= s ? 'var(--white)' : 'var(--text-secondary)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: '700',
-                  fontSize: '16px',
-                  transition: 'all 0.3s ease'
-                }}>
-                  {step > s ? <CheckCircle size={20} /> : s}
-                </div>
-              ))}
-            </div>
-
-            {/* Error Message */}
-            {error && (
-              <div style={{
-                padding: '12px 16px',
-                background: 'rgba(181, 68, 46, 0.1)',
-                border: '1px solid var(--error)',
-                borderRadius: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                marginBottom: '24px',
-                color: 'var(--error)',
-                fontSize: '14px'
-              }}>
-                <AlertCircle size={18} />
-                {error}
-              </div>
-            )}
-
-            {/* Step 1: Mobile Number */}
-            {step === 1 && (
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.4 }}
-              >
-                <div style={{ marginBottom: '24px' }}>
-                  <label style={{
-                    display: 'block',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: 'var(--primary-dark)',
-                    marginBottom: '8px'
-                  }}>
-                    Mobile Number
-                  </label>
-                  <div style={{ position: 'relative' }}>
-                    <Smartphone size={20} style={{
-                      position: 'absolute',
-                      left: '16px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      color: 'var(--text-secondary)'
-                    }} />
-                    <input
-                      type="tel"
-                      value={mobileNumber}
-                      onChange={(e) => setMobileNumber(e.target.value.replace(/\D/g, ''))}
-                      placeholder="Enter 10-digit mobile number"
-                      maxLength={10}
-                      className="input-field"
-                      style={{ paddingLeft: '50px' }}
-                    />
-                  </div>
-                </div>
-
-                <button
-                  className="btn btn-primary btn-block"
-                  onClick={handleSendOTP}
-                  disabled={loading || mobileNumber.length !== 10}
-                  style={{ marginBottom: '16px' }}
-                >
-                  {loading ? 'Sending OTP...' : 'Send OTP'}
-                </button>
-
-                <div id="recaptcha-container" style={{ marginTop: '16px' }}></div>
-
-                <p style={{
-                  textAlign: 'center',
-                  fontSize: '14px',
-                  color: 'var(--text-secondary)',
-                  marginTop: '24px'
-                }}>
-                  By continuing, you agree to our{' '}
-                  <a href="#" style={{ color: 'var(--primary-blue)', textDecoration: 'none' }}>Terms of Service</a>
-                  {' '}and{' '}
-                  <a href="#" style={{ color: 'var(--primary-blue)', textDecoration: 'none' }}>Privacy Policy</a>
-                </p>
-              </motion.div>
-            )}
-
-            {/* Step 2: OTP Verification */}
-            {step === 2 && (
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.4 }}
-              >
-                <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-                  <p style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
-                    Enter the 6-digit OTP sent to
-                  </p>
-                  <p style={{ fontSize: '16px', fontWeight: '600', color: 'var(--primary-dark)' }}>
-                    +91 {mobileNumber}
-                  </p>
-                </div>
-
-                <div style={{ marginBottom: '24px' }}>
-                  <label style={{
-                    display: 'block',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: 'var(--primary-dark)',
-                    marginBottom: '8px'
-                  }}>
-                    Enter OTP
-                  </label>
-                  <div style={{ position: 'relative' }}>
-                    <Lock size={20} style={{
-                      position: 'absolute',
-                      left: '16px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      color: 'var(--text-secondary)'
-                    }} />
-                    <input
-                      type="text"
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                      placeholder="Enter 6-digit OTP"
-                      maxLength={6}
-                      className="input-field"
-                      style={{ paddingLeft: '50px', textAlign: 'center', letterSpacing: '4px', fontSize: '18px' }}
-                    />
-                  </div>
-                </div>
-
-                <button
-                  className="btn btn-primary btn-block"
-                  onClick={handleVerifyOTP}
-                  disabled={loading || otp.length !== 6}
-                  style={{ marginBottom: '16px' }}
-                >
-                  {loading ? 'Verifying...' : 'Verify & Continue'}
-                </button>
-
-                <button
-                  className="btn btn-outline btn-block"
-                  onClick={() => { setStep(1); setOtp(''); setError(''); }}
-                  disabled={loading}
-                >
-                  Change Mobile Number
-                </button>
-
-                <p style={{
-                  textAlign: 'center',
-                  fontSize: '14px',
-                  color: 'var(--text-secondary)',
-                  marginTop: '24px'
-                }}>
-                  Didn't receive OTP?{' '}
-                  <button
-                    onClick={handleSendOTP}
-                    disabled={loading}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: 'var(--primary-blue)',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      textDecoration: 'underline'
-                    }}
-                  >
-                    Resend
-                  </button>
-                </p>
-              </motion.div>
-            )}
-
-            {/* Success State */}
-            {verified && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.4 }}
-                style={{ textAlign: 'center', padding: '40px 0' }}
-              >
-                <div style={{
-                  width: '80px',
-                  height: '80px',
-                  background: 'var(--success)',
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto 24px'
-                }}>
-                  <CheckCircle size={40} color="var(--white)" />
-                </div>
-                <h3 style={{
-                  fontSize: '24px',
-                  fontWeight: '700',
-                  color: 'var(--primary-dark)',
-                  marginBottom: '8px'
-                }}>
-                  Verified Successfully!
-                </h3>
-                <p style={{ color: 'var(--text-secondary)' }}>
-                  Redirecting to dashboard...
-                </p>
-              </motion.div>
-            )}
-          </div>
-
-          {/* Back to Home */}
-          <button
-            onClick={() => navigate('/')}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--white)',
-              cursor: 'pointer',
-              fontSize: '14px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              margin: '24px auto 0',
-              opacity: 0.8,
-              transition: 'opacity 0.3s'
-            }}
-            onMouseEnter={(e) => e.target.style.opacity = 1}
-            onMouseLeave={(e) => e.target.style.opacity = 0.8}
-          >
-            ← Back to Home
-          </button>
-        </motion.div>
+    <div className="max-w-md mx-auto my-12 p-6 bg-white rounded-xl shadow-lg border border-gray-100">
+      <div className="text-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-900">Regcat Permit Portal</h2>
+        <p className="text-sm text-gray-500 mt-1">TNCDBR 2019 Automated Compliance System</p>
       </div>
-    </div>
-  )
-}
+      
+      {error && (
+        <div className="p-3 mb-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs leading-relaxed">
+          {error}
+        </div>
+      )}
 
-export default AuthPage
+      <button 
+        onClick={handleGoogleLogin}
+        className="w-full py-2.5 px-4 bg-white border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 flex items-center justify-center gap-2 shadow-sm transition"
+      >
+        <svg className="w-5 h-5" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+        </svg>
+        Continue with Google
+      </button>
+
+      <div className="relative my-6">
+        <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
+        <div className="relative flex justify-center text-xs uppercase"><span className="bg-white px-2 text-gray-400 font-semibold">Or Phone Verification</span></div>
+      </div>
+
+      {!confirmationResult ? (
+        <form onSubmit={handleSendOtp} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">Mobile Number</label>
+            <input 
+              type="tel" 
+              placeholder="+91 9876543210" 
+              value={phone} 
+              onChange={(e) => setPhone(e.target.value)}
+              className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm focus:outline-none" 
+              required 
+            />
+          </div>
+          <button 
+            type="submit" 
+            disabled={loading}
+            className="w-full bg-blue-600 text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-blue-700 transition disabled:opacity-50"
+          >
+            {loading ? 'Sending OTP...' : 'Send OTP via SMS'}
+          </button>
+        </form>
+      ) : (
+        <form onSubmit={handleVerifyOtp} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">Enter 6-digit OTP</label>
+            <input 
+              type="text" 
+              placeholder="123456" 
+              value={otp} 
+              onChange={(e) => setOtp(e.target.value)}
+              className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm focus:outline-none" 
+              required 
+            />
+          </div>
+          <button 
+            type="submit" 
+            disabled={loading}
+            className="w-full bg-green-600 text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-green-700 transition disabled:opacity-50"
+          >
+            {loading ? 'Verifying...' : 'Verify OTP'}
+          </button>
+        </form>
+      )}
+
+      <div id="recaptcha-container"></div>
+    </div>
+  );
+}

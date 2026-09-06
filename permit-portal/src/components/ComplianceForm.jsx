@@ -1,189 +1,257 @@
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { MapPin, FileText, Upload, CheckCircle, ChevronRight, Home } from 'lucide-react'
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet'
-import 'leaflet/dist/leaflet.css'
+import React, { useState } from 'react';
+import { analyzeTNCDBRCompliance } from '../services/groqAi';
 
-const MapClickHandler = ({ onLocationSelect }) => {
-  useMapEvents({
-    click(e) {
-      onLocationSelect(e.latlng)
-    },
-  })
-  return null
-}
+export default function ComplianceForm({ onAnalysisComplete, onCancel }) {
+  const [currentStep, setCurrentStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-const ComplianceForm = () => {
-  const navigate = useNavigate()
-  const [step, setStep] = useState(1)
   const [formData, setFormData] = useState({
-    district: '', taluk: '', village: '', localBody: '',
-    surveyNumber: '', pattaNumber: '', extent: '',
-    plotSize: '', buildingArea: '', floors: '',
-    coordinates: null, documents: []
-  })
-  const [mapCenter, setMapCenter] = useState([13.0827, 80.2707])
-  const [markerPosition, setMarkerPosition] = useState(null)
-
-  const handleLocationSelect = (latlng) => {
-    setMarkerPosition([latlng.lat, latlng.lng])
-    setFormData({ ...formData, coordinates: latlng })
-  }
+    buildingType: 'Residential',
+    plotArea: 180,
+    roadWidth: 9.0,
+    height: 10.0,
+    floors: 2,
+    fsi: 1.5,
+    plotCoverage: 60,
+    frontSetback: 3.0,
+    rearSetback: 1.5,
+    sideSetback: 1.5,
+  });
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value })
-  }
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
-  const handleSubmit = () => {
-    sessionStorage.setItem('complianceData', JSON.stringify(formData))
-    navigate('/report')
-  }
-
-  const steps = [
-    { number: 1, title: 'Jurisdiction', icon: <Home size={18} /> },
-    { number: 2, title: 'Property Details', icon: <FileText size={18} /> },
-    { number: 3, title: 'GIS Verification', icon: <MapPin size={18} /> },
-    { number: 4, title: 'Documents', icon: <Upload size={18} /> }
-  ]
+  const handleRunAiCheck = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      const result = await analyzeTNCDBRCompliance(formData);
+      onAnalysisComplete(result);
+    } catch (err) {
+      setError(err.message || 'AI verification failed. Ensure VITE_GROQ_API_KEY is configured.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--light-bg)', padding: '40px 0' }}>
-      <div className="container">
-        <div style={{ marginBottom: '40px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', maxWidth: '800px', margin: '0 auto' }}>
-            {steps.map((s, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{
-                    width: '50px', height: '50px', borderRadius: '50%',
-                    background: step >= s.number ? 'var(--gradient-primary)' : 'var(--paper)',
-                    color: step >= s.number ? 'var(--white)' : 'var(--text-secondary)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'all 0.3s ease'
-                  }}>
-                    {step > s.number ? <CheckCircle size={24} /> : s.icon}
-                  </div>
-                  <span style={{ fontWeight: '600', color: step >= s.number ? 'var(--primary-dark)' : 'var(--text-secondary)' }}>
-                    {s.title}
-                  </span>
-                </div>
-                {i < steps.length - 1 && (
-                  <div style={{ width: '60px', height: '2px', background: step > s.number ? 'var(--primary-blue)' : 'var(--paper)', marginLeft: '12px' }} />
-                )}
-              </div>
-            ))}
-          </div>
+    <div className="max-w-2xl mx-auto my-8 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+      {/* Form Header */}
+      <div className="bg-slate-900 text-white p-6 border-b border-slate-800">
+        <h2 className="text-lg font-bold tracking-tight">TNCDBR 2019 Permit Evaluation</h2>
+        <p className="text-xs text-slate-400 mt-1">Multi-step rule validation and Groq AI analysis engine</p>
+
+        {/* Progressive Disclosure Step Navigation */}
+        <div className="flex items-center gap-2 mt-6">
+          <div className={`flex-1 h-1.5 rounded-full ${currentStep >= 1 ? 'bg-blue-500' : 'bg-slate-800'}`} />
+          <div className={`flex-1 h-1.5 rounded-full ${currentStep >= 2 ? 'bg-blue-500' : 'bg-slate-800'}`} />
+          <div className={`flex-1 h-1.5 rounded-full ${currentStep >= 3 ? 'bg-blue-500' : 'bg-slate-800'}`} />
         </div>
+        <div className="flex justify-between text-[11px] font-mono text-slate-400 mt-2">
+          <span className={currentStep === 1 ? 'text-white font-bold' : ''}>1. Site Basics</span>
+          <span className={currentStep === 2 ? 'text-white font-bold' : ''}>2. Building Specs</span>
+          <span className={currentStep === 3 ? 'text-white font-bold' : ''}>3. AI Analysis</span>
+        </div>
+      </div>
 
-        <motion.div className="card" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ maxWidth: '900px', margin: '0 auto' }}>
-          <h2 style={{ fontSize: '24px', fontWeight: '700', color: 'var(--primary-dark)', marginBottom: '32px' }}>
-            {steps[step - 1].title}
-          </h2>
-
-          {step === 1 && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '8px' }}>District</label>
-                <select name="district" value={formData.district} onChange={handleChange} className="input-field">
-                  <option>Select District</option>
-                  <option>Chennai</option><option>Coimbatore</option><option>Madurai</option><option>Tiruchirappalli</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '8px' }}>Taluk</label>
-                <select name="taluk" value={formData.taluk} onChange={handleChange} className="input-field">
-                  <option>Select Taluk</option><option>Egmore</option><option>Mylapore</option><option>Ambattur</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '8px' }}>Village</label>
-                <input type="text" name="village" value={formData.village} onChange={handleChange} className="input-field" placeholder="Enter village name" />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '8px' }}>Local Body Type</label>
-                <select name="localBody" value={formData.localBody} onChange={handleChange} className="input-field">
-                  <option>Select Type</option><option>Corporation</option><option>Municipality</option><option>Town Panchayat</option>
-                </select>
-              </div>
-            </div>
-          )}
-
-          {step === 2 && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '8px' }}>Survey Number</label>
-                <input type="text" name="surveyNumber" value={formData.surveyNumber} onChange={handleChange} className="input-field" placeholder="e.g. 245/3B" />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '8px' }}>Patta Number</label>
-                <input type="text" name="pattaNumber" value={formData.pattaNumber} onChange={handleChange} className="input-field" placeholder="e.g. 1123" />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '8px' }}>Plot Size (sq.ft)</label>
-                <input type="number" name="plotSize" value={formData.plotSize} onChange={handleChange} className="input-field" placeholder="1200" />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '8px' }}>Building Area (sq.ft)</label>
-                <input type="number" name="buildingArea" value={formData.buildingArea} onChange={handleChange} className="input-field" placeholder="950" />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '8px' }}>Number of Floors</label>
-                <input type="number" name="floors" value={formData.floors} onChange={handleChange} className="input-field" placeholder="2" />
-              </div>
-            </div>
-          )}
-
-          {step === 3 && (
-            <div>
-              <p style={{ marginBottom: '16px', color: 'var(--text-secondary)' }}>Click on the map to mark your property location</p>
-              <div style={{ height: '400px', borderRadius: '12px', overflow: 'hidden', border: '2px solid var(--border-color)' }}>
-                <MapContainer center={mapCenter} zoom={13} style={{ height: '100%', width: '100%' }}>
-                  <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                  <MapClickHandler onLocationSelect={handleLocationSelect} />
-                  {markerPosition && <Marker position={markerPosition}><Popup>Selected Location</Popup></Marker>}
-                </MapContainer>
-              </div>
-              {formData.coordinates && (
-                <div style={{ marginTop: '16px', padding: '12px', background: 'rgba(31, 122, 92, 0.1)', borderRadius: '8px', color: 'var(--success)' }}>
-                  Location marked: {formData.coordinates.lat.toFixed(4)}, {formData.coordinates.lng.toFixed(4)}
-                </div>
-              )}
-            </div>
-          )}
-
-          {step === 4 && (
-            <div>
-              <div style={{ border: '2px dashed var(--border-color)', borderRadius: '12px', padding: '48px', textAlign: 'center', marginBottom: '24px' }}>
-                <Upload size={48} color="var(--text-secondary)" style={{ marginBottom: '16px' }} />
-                <p style={{ fontWeight: '600', marginBottom: '8px' }}>Drag and drop files or click to upload</p>
-                <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Sale Deed, Patta, FMB Sketch, Building Plan (PDF, max 10MB)</p>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                {['Sale Deed', 'Patta Document', 'FMB Sketch', 'Building Plan'].map((doc) => (
-                  <div key={doc} style={{ padding: '16px', border: '1px solid var(--border-color)', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <FileText size={20} color="var(--primary-blue)" />
-                    <span style={{ fontSize: '14px' }}>{doc}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '32px', paddingTop: '24px', borderTop: '1px solid var(--border-color)' }}>
-            {step > 1 ? (
-              <button className="btn btn-outline" onClick={() => setStep(step - 1)}>Previous</button>
-            ) : <div></div>}
-            {step < 4 ? (
-              <button className="btn btn-primary" onClick={() => setStep(step + 1)}>Next</button>
-            ) : (
-              <button className="btn btn-accent" onClick={handleSubmit}>Submit for Compliance Check</button>
-            )}
+      <div className="p-6">
+        {error && (
+          <div className="mb-6 p-3.5 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg">
+            {error}
           </div>
-        </motion.div>
+        )}
+
+        {/* STEP 1: Site & Road Parameters */}
+        {currentStep === 1 && (
+          <div className="space-y-4">
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Step 1: Plot & Location Parameters</h3>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Building Classification</label>
+              <select
+                name="buildingType"
+                value={formData.buildingType}
+                onChange={handleChange}
+                className="w-full p-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              >
+                <option value="Residential">Residential (Non-High Rise)</option>
+                <option value="Commercial">Commercial / Retail</option>
+                <option value="Industrial">Industrial / Warehouse</option>
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Plot Area (sq.m)</label>
+                <input
+                  type="number"
+                  name="plotArea"
+                  value={formData.plotArea}
+                  onChange={handleChange}
+                  className="w-full p-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Abutting Road Width (m)</label>
+                <input
+                  type="number"
+                  name="roadWidth"
+                  value={formData.roadWidth}
+                  onChange={handleChange}
+                  className="w-full p-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end pt-4">
+              <button
+                type="button"
+                onClick={() => setCurrentStep(2)}
+                className="px-5 py-2.5 bg-slate-900 text-white rounded-lg text-sm font-semibold hover:bg-slate-800 transition"
+              >
+                Next: Building Dimensions &rarr;
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 2: Height, FSI & Coverage Specs */}
+        {currentStep === 2 && (
+          <div className="space-y-4">
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Step 2: Proposed Structure Specs</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Proposed Height (m)</label>
+                <input
+                  type="number"
+                  name="height"
+                  value={formData.height}
+                  onChange={handleChange}
+                  className="w-full p-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Number of Floors</label>
+                <input
+                  type="number"
+                  name="floors"
+                  value={formData.floors}
+                  onChange={handleChange}
+                  className="w-full p-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Proposed FSI</label>
+                <input
+                  type="number"
+                  step="0.05"
+                  name="fsi"
+                  value={formData.fsi}
+                  onChange={handleChange}
+                  className="w-full p-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Plot Coverage (%)</label>
+                <input
+                  type="number"
+                  name="plotCoverage"
+                  value={formData.plotCoverage}
+                  onChange={handleChange}
+                  className="w-full p-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <div className="flex justify-between pt-4">
+              <button
+                type="button"
+                onClick={() => setCurrentStep(1)}
+                className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-200"
+              >
+                &larr; Back
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentStep(3)}
+                className="px-5 py-2.5 bg-slate-900 text-white rounded-lg text-sm font-semibold hover:bg-slate-800 transition"
+              >
+                Next: Setbacks & Verification &rarr;
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 3: Setbacks & AI Verification Trigger */}
+        {currentStep === 3 && (
+          <div className="space-y-4">
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Step 3: Boundary Setbacks (Meters)</h3>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Front Setback</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  name="frontSetback"
+                  value={formData.frontSetback}
+                  onChange={handleChange}
+                  className="w-full p-2 border border-slate-300 rounded-lg text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Rear Setback</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  name="rearSetback"
+                  value={formData.rearSetback}
+                  onChange={handleChange}
+                  className="w-full p-2 border border-slate-300 rounded-lg text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Side Setback</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  name="sideSetback"
+                  value={formData.sideSetback}
+                  onChange={handleChange}
+                  className="w-full p-2 border border-slate-300 rounded-lg text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="pt-6 border-t border-slate-200 flex justify-between items-center">
+              <button
+                type="button"
+                onClick={() => setCurrentStep(2)}
+                className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-200"
+              >
+                &larr; Back
+              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={onCancel}
+                  className="px-4 py-2.5 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRunAiCheck}
+                  disabled={loading}
+                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold shadow-md transition disabled:opacity-50 flex items-center gap-2"
+                >
+                  {loading ? 'Evaluating TNCDBR AI...' : 'Run Groq AI Audit ✨'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
-  )
+  );
 }
-
-export default ComplianceForm
