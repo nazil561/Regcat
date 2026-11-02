@@ -1,5 +1,4 @@
 // Local compliance engine — no external API, no placeholders.
-// Computes TNCDBR compliance from engineeringLogic so the report always generates.
 import { calculateDCR, recommendFoundation, checkCorrosionRisk, calculateRWH } from './engineeringLogic';
 
 export const analyzeTNCDBRCompliance = async (formData) => {
@@ -11,7 +10,6 @@ export const analyzeTNCDBRCompliance = async (formData) => {
   const rwh = calculateRWH(plot);
   const foundation = recommendFoundation(formData.sbc);
   const corrosion = checkCorrosionRisk(formData.soilPh);
-
   return {
     overallStatus: fsiPass && covPass ? 'APPROVED' : 'VARIANCE_REQUIRED',
     source: 'LOCAL_ENGINE',

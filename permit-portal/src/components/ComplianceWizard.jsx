@@ -124,21 +124,19 @@ export default function ComplianceWizard({ user, onComplete, onCancel }) {
     let result;
     try {
       const aiResult = await analyzeTNCDBRCompliance(formData);
-      if (aiResult && typeof aiResult === 'object') {
+      if (aiResult && typeof aiResult === 'object' && Object.keys(aiResult).length > 0) {
         result = aiResult;
       } else {
-        console.warn('[Regcat] AI returned non-object, using local engine');
         result = generateFallbackReport(formData, liveMetrics);
       }
-    } catch (error) {
-      console.warn('[Regcat] AI failed, using local engine:', error?.message || error);
+    } catch (err) {
+      console.warn('[Regcat] AI call failed, using fallback:', err?.message || err);
       result = generateFallbackReport(formData, liveMetrics);
     }
     try {
       await onComplete({ ...result, formData });
     } catch (e) {
       console.error('[Regcat] onComplete crashed:', e);
-      alert('Report pipeline failed — check console.');
     }
     setLoading(false);
   };
