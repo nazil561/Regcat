@@ -77,11 +77,13 @@ export const generateTamperProofPdf = async (surveyNo, formData, reportData) => 
   doc.setFontSize(42);
   doc.text(isProvisional ? "PROVISIONAL - SELF REPORTED" : "OFFICIAL TNCDBR CERTIFICATE", 15, 160, { angle: 35 });
 
-  // Draw Government Logo
-  const logoUrl = `${import.meta.env.BASE_URL}tn-emblem.png`;
-  const logoBase64 = await fetchImageAsBase64(logoUrl);
-  if (logoBase64) {
-    doc.addImage(logoBase64, 'PNG', 14, 12, 18, 22); // x, y, width, height
+  // Draw Government Logo (Embedded Base64 - No network requests)
+  const tnLogoBase64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="; // Valid 1x1 fallback PNG
+  try {
+    // Note: Replace the Base64 string above with the real TN emblem Base64 if you have it.
+    doc.addImage(tnLogoBase64, 'PNG', 14, 12, 18, 22); 
+  } catch (err) {
+    console.warn("Logo failed to load, but PDF will still generate.", err);
   }
 
   // Main Header (Shifted to x=36 to make room for logo)
