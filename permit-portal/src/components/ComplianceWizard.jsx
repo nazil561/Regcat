@@ -4,6 +4,7 @@ import { analyzeTNCDBRCompliance } from '../services/groqAi';
 import { parseBlueprintDimensions } from '../services/ocrIntelligence';
 import { MapContainer, TileLayer } from 'react-leaflet';
 import BimDigitalTwin from './BimDigitalTwin';
+import LandMasterStep from './LandMasterStep';
 import 'leaflet/dist/leaflet.css';
 
 export default function ComplianceWizard({ user, onComplete }) {
@@ -11,6 +12,8 @@ export default function ComplianceWizard({ user, onComplete }) {
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState('gis');
   const [formData, setFormData] = useState({
+    district: '', taluk: '', village: '',
+    ownerName: '', ownerPhone: '', ownerAddress: '',
     surveyNo: '', pattaNo: '',
     plotArea: 200, roadWidth: 12, builtUpArea: 120,
     soilMoisture: '', soilPh: '', soilEc: '', soilTemp: '', sbc: '',
@@ -54,6 +57,18 @@ export default function ComplianceWizard({ user, onComplete }) {
     setLoading(false);
   };
 
+  const canProceed = () => {
+    if (step === 1) {
+      return Boolean(
+        formData.district && formData.taluk && formData.village &&
+        formData.surveyNo && formData.pattaNo &&
+        formData.ownerName && formData.ownerPhone
+      );
+    }
+    if (step === 2) return formData.plotArea > 0 && formData.builtUpArea > 0;
+    return true;
+  };
+
   return (
     <div className="max-w-4xl mx-auto my-8 bg-white rounded-xl shadow-sm border border-slate-200 font-sans">
       <div className="flex border-b border-slate-200 bg-slate-50 rounded-t-xl overflow-hidden">
@@ -66,20 +81,12 @@ export default function ComplianceWizard({ user, onComplete }) {
       <div className="p-8">
 
         {step === 1 && (
-          <div className="space-y-6">
-            <h2 className="text-xl font-bold">1. Jurisdiction & Ownership</h2>
-            <div>
-              <label className="block text-sm font-semibold mb-1">TN Survey Number (e.g., 245/3B)</label>
-              <input type="text" name="surveyNo" value={formData.surveyNo} onChange={handleChange} className="w-full p-3 border rounded-lg" placeholder="245/3B" />
-              {!validateSurveyNumber(formData.surveyNo) && formData.surveyNo.length > 0 && (
-                <span className="text-red-500 text-xs">Invalid format.</span>
-              )}
-            </div>
-            <div>
-              <label className="block text-sm font-semibold mb-1">Patta Number</label>
-              <input type="text" name="pattaNo" value={formData.pattaNo} onChange={handleChange} className="w-full p-3 border rounded-lg" placeholder="Patta No." />
-            </div>
-          </div>
+          <LandMasterStep
+            formData={formData}
+            handleChange={handleChange}
+            setFormData={setFormData}
+            user={user}
+          />
         )}
 
         {step === 2 && (
@@ -167,7 +174,7 @@ export default function ComplianceWizard({ user, onComplete }) {
 
         <div className="flex justify-between mt-8 pt-4 border-t">
           {step > 1 ? <button onClick={() => setStep(step - 1)} className="px-4 py-2 border rounded-lg text-xs font-semibold">Back</button> : <div></div>}
-          {step < 6 && <button onClick={() => setStep(step + 1)} className="px-4 py-2 bg-slate-900 text-white rounded-lg text-xs font-semibold">Next Phase</button>}
+          {step < 6 && <button onClick={() => setStep(step + 1)} disabled={!canProceed()} className="px-4 py-2 bg-slate-900 text-white rounded-lg text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed">Next Phase</button>}
         </div>
       </div>
     </div>
