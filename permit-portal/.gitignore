@@ -1,1 +1,11 @@
 .env
+
+# Cleanup
+*.bak
+*.py
+patch_*.py
+.DS_Store
+*.bak
+*.py
+patch_*.py
+.DS_Store

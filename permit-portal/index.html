@@ -3,14 +3,42 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0f172a" />
+    <meta name="description" content="Official DTCP Permit Compliance Portal for the Government of Tamil Nadu. AI-powered building permit verification under TNCDBR 2019." />
+    <meta property="og:title" content="DTCP Permit Compliance Portal" />
+    <meta property="og:description" content="AI-powered building permit verification under TNCDBR 2019." />
+    <meta property="og:type" content="website" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <title>DTCP Permit Compliance Portal | Government of Tamil Nadu</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://identitytoolkit.googleapis.com">
+    <link rel="preconnect" href="https://firestore.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+      html, body, #root { height: 100%; margin: 0; }
+      .boot-loader {
+        min-height: 100vh; display: flex; align-items: center; justify-content: center;
+        background: #0f172a; color: #94a3b8; font-family: ui-monospace, monospace; font-size: 12px;
+      }
+      .boot-loader::before {
+        content: ""; display: inline-block; width: 16px; height: 16px; margin-right: 8px;
+        border: 2px solid #3b82f6; border-top-color: transparent; border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="boot-loader">Loading Regcat Permit Portal...</div>
+    </div>
+    <noscript>
+      <div style="padding:40px;font-family:sans-serif;background:#0f172a;color:#f1f5f9;min-height:100vh">
+        <h1>JavaScript Required</h1>
+        <p>This portal requires JavaScript. Please enable it in your browser settings.</p>
+      </div>
+    </noscript>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

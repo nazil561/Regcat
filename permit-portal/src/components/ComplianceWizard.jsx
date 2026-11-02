@@ -56,6 +56,18 @@ export default function ComplianceWizard({ user, onComplete, onCancel }) {
     return () => clearTimeout(t);
   }, [formData, user]);
 
+  // Save draft immediately on tab close / refresh
+  useEffect(() => {
+    if (!user?.uid) return;
+    const handler = () => {
+      if (formData.district && formData.surveyNo) {
+        saveFormDraft(user.uid, formData).catch(() => {});
+      }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [formData, user]);
+
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
