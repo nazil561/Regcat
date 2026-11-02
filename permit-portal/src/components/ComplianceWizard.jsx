@@ -6,8 +6,9 @@ import { MapContainer, TileLayer } from 'react-leaflet';
 import BimDigitalTwin from './BimDigitalTwin';
 import LandMasterStep from './LandMasterStep';
 import 'leaflet/dist/leaflet.css';
+import { saveFormDraft, uploadDocument } from '../firebase';
 
-export default function ComplianceWizard({ user, onComplete }) {
+export default function ComplianceWizard({ user, onComplete, onCancel }) {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState('gis');
@@ -32,12 +33,39 @@ export default function ComplianceWizard({ user, onComplete }) {
     });
   }, [formData]);
 
+  // Auto-fill owner details from logged-in user
+  useEffect(() => {
+    if (user && !formData.ownerAddress) {
+      setFormData(prev => ({
+        ...prev,
+        ownerName: prev.ownerName || (user.displayName || ''),
+        ownerPhone: prev.ownerPhone || (user.phoneNumber || ''),
+        ownerAddress: prev.ownerAddress || (user.email || ''),
+      }));
+    }
+  }, [user]);
+
+  // Auto-save draft every 3s when form changes
+  useEffect(() => {
+    if (!user?.uid || !formData.district) return;
+    const t = setTimeout(() => {
+      saveFormDraft(user.uid, formData).catch(err =>
+        console.warn('[Regcat] draft save failed:', err?.message)
+      );
+    }, 3000);
+    return () => clearTimeout(t);
+  }, [formData, user]);
+
+
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
   const handleFileUpload = async (e, docType) => {
     const file = e.target.files[0];
     if (file) {
       setFormData(prev => ({ ...prev, files: { ...prev.files, [docType]: file } }));
+      if (user?.uid) {
+        uploadDocument(file, user.uid, docType).catch(e => console.warn('upload fail', e));
+      }
       if (docType === 'architectPlans') {
         const ocrResult = await parseBlueprintDimensions(file);
         console.log("OCR Extracted Blueprint Data:", ocrResult);
@@ -62,7 +90,7 @@ export default function ComplianceWizard({ user, onComplete }) {
       return Boolean(
         formData.district && formData.taluk && formData.village &&
         formData.surveyNo && formData.pattaNo &&
-        formData.ownerName && formData.ownerPhone
+        formData.ownerName && formData.ownerPhone && formData.ownerAddress
       );
     }
     if (step === 2) return formData.plotArea > 0 && formData.builtUpArea > 0;
@@ -173,7 +201,10 @@ export default function ComplianceWizard({ user, onComplete }) {
         )}
 
         <div className="flex justify-between mt-8 pt-4 border-t">
-          {step > 1 ? <button onClick={() => setStep(step - 1)} className="px-4 py-2 border rounded-lg text-xs font-semibold">Back</button> : <div></div>}
+          <div className="flex gap-2">
+            {onCancel && <button onClick={onCancel} className="px-4 py-2 border border-red-200 text-red-600 rounded-lg text-xs font-semibold hover:bg-red-50">Cancel</button>}
+            {step > 1 && <button onClick={() => setStep(step - 1)} className="px-4 py-2 border rounded-lg text-xs font-semibold">Back</button>}
+          </div>
           {step < 6 && <button onClick={() => setStep(step + 1)} disabled={!canProceed()} className="px-4 py-2 bg-slate-900 text-white rounded-lg text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed">Next Phase</button>}
         </div>
       </div>

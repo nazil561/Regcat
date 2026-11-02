@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { db } from '../firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 export default function VerificationPage({ hashFromUrl, onReturn }) {
   const [auditRecord, setAuditRecord] = useState(null);
@@ -6,20 +8,31 @@ export default function VerificationPage({ hashFromUrl, onReturn }) {
 
   useEffect(() => {
     // Simulate cryptographic ledger lookup via SHA-256 hash
-    setTimeout(() => {
-      setAuditRecord({
-        hash: hashFromUrl || "8f9b2c3a1d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4",
-        surveyNo: "245/3B",
-        jurisdiction: "DTCP / Greater Chennai Corporation",
-        timestamp: new Date().toISOString(),
-        status: "OFFICIAL_VERIFIED",
-        zkProofStatus: "ZK-PROOF VALID (TNCDBR 2019 Compliant)",
-        buildingType: "Residential Multi-Storey (G+2)",
-        sbcTrustLevel: "VERIFIED_LAB_REPORT",
-        ledgerAnchor: "IPFS / Block #18923041"
-      });
+    (async () => {
+      try {
+        if (!hashFromUrl) { setVerifying(false); return; }
+        const snap = await getDoc(doc(db, 'reports', hashFromUrl));
+        if (snap.exists()) {
+          const d = snap.data();
+          setAuditRecord({
+            hash: hashFromUrl,
+            surveyNo: d.surveyNo || '—',
+            jurisdiction: `${d.district || ''} / ${d.taluk || ''} DTCP`,
+            timestamp: d.createdAt || new Date().toISOString(),
+            status: d.overallStatus === 'APPROVED' ? 'OFFICIAL_VERIFIED' : 'UNDER_REVIEW',
+            zkProofStatus: d.overallStatus === 'APPROVED' ? 'TNCDBR 2019 Compliant' : 'Variance Noted',
+            buildingType: d.buildingType || 'Residential',
+            sbcTrustLevel: d.sbc ? 'VERIFIED_LAB_REPORT' : 'UNVERIFIED',
+            ledgerAnchor: `Firestore / ${hashFromUrl.slice(0,12)}`,
+          });
+        } else {
+          setAuditRecord({ hash: hashFromUrl, status: 'NOT_FOUND', surveyNo: '—' });
+        }
+      } catch (e) {
+        console.error('[Regcat] verify fail:', e?.message);
+      }
       setVerifying(false);
-    }, 800);
+    })();
   }, [hashFromUrl]);
 
   if (verifying) {

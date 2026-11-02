@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { auth } from './firebase';
+import { auth, db } from './firebase';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import AuthPage from './components/AuthPage';
 import Dashboard from './components/Dashboard';
@@ -34,6 +35,14 @@ export default function App() {
         clearTimeout(timeout);
         setUser(currentUser);
         setLoading(false);
+        if (currentUser?.uid) {
+          const q = query(collection(db, 'formDrafts'), where('__name__', '==', currentUser.uid));
+          getDocs(q).then(snap => {
+            const reports = [];
+            snap.forEach(d => { const data = d.data(); if (data.overallStatus || data.result) reports.push(data); });
+            setActiveReports(reports);
+          }).catch(e => console.warn('[Regcat] report load failed:', e?.message));
+        }
       },
       (error) => {
         clearTimeout(timeout);
@@ -89,9 +98,15 @@ export default function App() {
       {currentView === 'wizard' && (
         <ComplianceWizard
           user={user}
-          onComplete={(reportResult) => {
-            setSelectedReport(reportResult);
-            setActiveReports((prev) => [reportResult, ...prev]);
+          onComplete={async (reportResult) => {
+            const enriched = { ...reportResult, userId: user.uid, createdAt: new Date().toISOString(), hash: crypto.randomUUID().replace(/-/g,'') };
+            try {
+              const { setDoc, doc } = await import('firebase/firestore');
+              await setDoc(doc(db, 'reports', enriched.hash), enriched, { merge: true });
+              await setDoc(doc(db, 'formDrafts', user.uid), { ...enriched, lastReportHash: enriched.hash }, { merge: true });
+            } catch (e) { console.warn('[Regcat] report save fail:', e?.message); }
+            setSelectedReport(enriched);
+            setActiveReports((prev) => [enriched, ...prev]);
             setCurrentView('report');
           }}
           onCancel={() => setCurrentView('dashboard')}
