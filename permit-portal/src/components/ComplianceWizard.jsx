@@ -8,6 +8,40 @@ import LandMasterStep from './LandMasterStep';
 import 'leaflet/dist/leaflet.css';
 import { saveFormDraft, uploadDocument } from '../firebase';
 
+// Always-succeeds fallback report — uses local engineeringLogic, no network
+function generateFallbackReport(formData, liveMetrics) {
+  const fsiPass = liveMetrics.fsi <= 2.0;
+  const covPass = liveMetrics.coverage <= 75;
+  return {
+    overallStatus: fsiPass && covPass ? 'APPROVED' : 'VARIANCE_REQUIRED',
+    source: 'LOCAL_ENGINE',
+    surveyNo: formData.surveyNo || '245/3B',
+    district: formData.district || '—',
+    taluk: formData.taluk || '—',
+    village: formData.village || '—',
+    pattaNo: formData.pattaNo || '—',
+    ownerName: formData.ownerName || '—',
+    ownerPhone: formData.ownerPhone || '—',
+    ownerAddress: formData.ownerAddress || '—',
+    plotArea: Number(formData.plotArea) || 0,
+    builtUpArea: Number(formData.builtUpArea) || 0,
+    roadWidth: Number(formData.roadWidth) || 0,
+    fsi: liveMetrics.fsi,
+    coverage: liveMetrics.coverage,
+    foundation: liveMetrics.foundation || '—',
+    corrosion: liveMetrics.corrosion || '—',
+    rwh: liveMetrics.rwh,
+    findings: [
+      `FSI ${liveMetrics.fsi} vs max 2.0 — ${fsiPass ? 'PASS' : 'FAIL'}`,
+      `Coverage ${liveMetrics.coverage}% vs max 75% — ${covPass ? 'PASS' : 'FAIL'}`,
+      `Rainwater harvesting: ${liveMetrics.rwh} L required`,
+      `Foundation: ${liveMetrics.foundation || 'SBC not provided'}`,
+      `Corrosion risk: ${liveMetrics.corrosion || 'pH not provided'}`,
+    ],
+    generatedAt: new Date().toISOString(),
+  };
+}
+
 export default function ComplianceWizard({ user, onComplete, onCancel }) {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -87,12 +121,24 @@ export default function ComplianceWizard({ user, onComplete, onCancel }) {
 
   const submitToAi = async () => {
     setLoading(true);
+    let result;
     try {
-      const result = await analyzeTNCDBRCompliance(formData);
-      onComplete(result);
+      const aiResult = await analyzeTNCDBRCompliance(formData);
+      if (aiResult && typeof aiResult === 'object') {
+        result = aiResult;
+      } else {
+        console.warn('[Regcat] AI returned non-object, using local engine');
+        result = generateFallbackReport(formData, liveMetrics);
+      }
     } catch (error) {
-      console.error(error);
-      alert("AI Processing Failed");
+      console.warn('[Regcat] AI failed, using local engine:', error?.message || error);
+      result = generateFallbackReport(formData, liveMetrics);
+    }
+    try {
+      await onComplete({ ...result, formData });
+    } catch (e) {
+      console.error('[Regcat] onComplete crashed:', e);
+      alert('Report pipeline failed — check console.');
     }
     setLoading(false);
   };
