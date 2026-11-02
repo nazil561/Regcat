@@ -1,5 +1,21 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700&display=swap');
 
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Leaflet container must have explicit height */
+.leaflet-container {
+  height: 100% !important;
+  width: 100% !important;
+  min-height: 400px;
+  z-index: 0;
+}
+.leaflet-marker-icon,
+.leaflet-marker-shadow {
+  display: block;
+}
+
 * {
   margin: 0;
   padding: 0;
