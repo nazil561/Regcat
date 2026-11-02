@@ -72,21 +72,20 @@ export const generateTamperProofPdf = async (surveyNo, formData, reportData) => 
   const auditHash = generateAuditHash(surveyNo, formData, reportData);
   const isProvisional = !formData.files?.labCerts;
 
-  // Dynamic Background Watermark
+  // 1. Watermark
   doc.setTextColor(230, 230, 235);
   doc.setFontSize(42);
   doc.text(isProvisional ? "PROVISIONAL - SELF REPORTED" : "OFFICIAL TNCDBR CERTIFICATE", 15, 160, { angle: 35 });
 
-  // Draw Government Logo (Embedded Base64 - No network requests)
-  const tnLogoBase64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="; // Valid 1x1 fallback PNG
+  // 2. Draw Emblem (Embedded Base64 - guaranteed valid PNG)
   try {
-    // Note: Replace the Base64 string above with the real TN emblem Base64 if you have it.
-    doc.addImage(tnLogoBase64, 'PNG', 14, 12, 18, 22); 
-  } catch (err) {
-    console.warn("Logo failed to load, but PDF will still generate.", err);
+    const tnLogoBase64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+    doc.addImage(tnLogoBase64, 'PNG', 14, 12, 18, 22);
+  } catch (e) {
+    console.warn("Logo failed to render, but PDF continues:", e);
   }
 
-  // Main Header (Shifted to x=36 to make room for logo)
+  // 3. Header text
   doc.setTextColor(15, 23, 42);
   doc.setFontSize(15);
   doc.setFont('helvetica', 'bold');
@@ -99,7 +98,7 @@ export const generateTamperProofPdf = async (surveyNo, formData, reportData) => 
   doc.text(`Audit Hash: ${auditHash}`, 36, 33);
   doc.text(`Timestamp: ${new Date().toISOString()}`, 36, 37);
 
-  // Status Box
+  // 4. Status Box
   doc.setDrawColor(226, 232, 240);
   doc.setFillColor(248, 250, 252);
   doc.roundedRect(14, 40, 120, 25, 2, 2, 'FD');
@@ -110,15 +109,19 @@ export const generateTamperProofPdf = async (surveyNo, formData, reportData) => 
   doc.setFont('helvetica', 'bold');
   doc.text(`Audit Result: ${reportData.overallStatus || 'APPROVED'}`, 18, 58);
 
-  // Generate QR Code for Verification Link
-  const verificationUrl = `https://nazil561.github.io/Regcat/?hash=${auditHash}`;
-  const qrDataUrl = await QRCode.toDataURL(verificationUrl, { margin: 1, width: 120 });
-  doc.addImage(qrDataUrl, 'PNG', 145, 15, 45, 45);
-  doc.setFontSize(7);
-  doc.setTextColor(100, 116, 139);
-  doc.text("Scan QR to verify hash on ledger", 143, 63);
+  // 5. QR Code (Wrapped in try/catch to prevent signature crash)
+  try {
+    const verificationUrl = `https://nazil561.github.io/Regcat/?hash=${auditHash}`;
+    const qrDataUrl = await QRCode.toDataURL(verificationUrl, { margin: 1, width: 120 });
+    doc.addImage(qrDataUrl, 'PNG', 145, 15, 45, 45);
+    doc.setFontSize(7);
+    doc.setTextColor(100, 116, 139);
+    doc.text("Scan QR to verify hash on ledger", 143, 63);
+  } catch (e) {
+    console.warn("QR code failed, continuing without it:", e);
+  }
 
-  // Technical Breakdown
+  // 6. Technical Breakdown
   doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(15, 23, 42);
@@ -135,6 +138,6 @@ export const generateTamperProofPdf = async (surveyNo, formData, reportData) => 
     doc.text(`* Warning: ${trust.sbc.warning}`, 14, 100);
   }
 
-  // Save Document
+  // 7. Save
   doc.save(`TNCDBR_Audit_${surveyNo.replace('/', '_')}.pdf`);
 };
