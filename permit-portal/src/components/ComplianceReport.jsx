@@ -1,5 +1,6 @@
 import React from 'react';
 import { generateTamperProofPdf, evaluateDataTrust } from '../services/securityEngine';
+import GovernmentHeader from './GovernmentHeader';
 
 export default function ComplianceReport({ reportData, formData = {}, onBack }) {
   if (!reportData) {
@@ -34,6 +35,7 @@ export default function ComplianceReport({ reportData, formData = {}, onBack }) 
 
   return (
     <div className="max-w-4xl mx-auto my-8 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden font-sans">
+      <GovernmentHeader reportData={merged} formData={merged} />
       <div className="bg-slate-900 text-white p-6 border-b border-slate-800 flex items-center justify-between">
         <div>
           <div className="text-xs font-mono text-slate-400">TNCDBR 2019 / COMPLIANCE AUDIT</div>
