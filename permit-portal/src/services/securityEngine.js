@@ -51,6 +51,22 @@ export const generateAuditHash = (surveyNo, formData, reportData) => {
   return CryptoJS.SHA256(payload).toString(CryptoJS.enc.Hex);
 };
 
+const fetchImageAsBase64 = async (url) => {
+  try {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (e) {
+    console.warn('Logo load failed', e);
+    return null;
+  }
+};
+
 export const generateTamperProofPdf = async (surveyNo, formData, reportData) => {
   const doc = new jsPDF();
   const auditHash = generateAuditHash(surveyNo, formData, reportData);
@@ -61,17 +77,25 @@ export const generateTamperProofPdf = async (surveyNo, formData, reportData) => 
   doc.setFontSize(42);
   doc.text(isProvisional ? "PROVISIONAL - SELF REPORTED" : "OFFICIAL TNCDBR CERTIFICATE", 15, 160, { angle: 35 });
 
-  // Main Header
+  // Draw Government Logo
+  const logoUrl = `${import.meta.env.BASE_URL}tn-emblem.png`;
+  const logoBase64 = await fetchImageAsBase64(logoUrl);
+  if (logoBase64) {
+    doc.addImage(logoBase64, 'PNG', 14, 12, 18, 22); // x, y, width, height
+  }
+
+  // Main Header (Shifted to x=36 to make room for logo)
   doc.setTextColor(15, 23, 42);
-  doc.setFontSize(16);
+  doc.setFontSize(15);
   doc.setFont('helvetica', 'bold');
-  doc.text("TAMIL NADU BUILDING PERMIT AUDIT CERTIFICATE", 14, 20);
+  doc.text("TAMIL NADU BUILDING PERMIT AUDIT", 36, 20);
+  doc.text("CERTIFICATE", 36, 26);
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100, 116, 139);
-  doc.text(`Audit Hash: ${auditHash}`, 14, 27);
-  doc.text(`Timestamp: ${new Date().toISOString()} | HLC: ${new HybridLogicalClock().now()}`, 14, 32);
+  doc.text(`Audit Hash: ${auditHash}`, 36, 33);
+  doc.text(`Timestamp: ${new Date().toISOString()}`, 36, 37);
 
   // Status Box
   doc.setDrawColor(226, 232, 240);
@@ -85,7 +109,7 @@ export const generateTamperProofPdf = async (surveyNo, formData, reportData) => 
   doc.text(`Audit Result: ${reportData.overallStatus || 'APPROVED'}`, 18, 58);
 
   // Generate QR Code for Verification Link
-  const verificationUrl = `https://permit-portal.tn.gov.in/verify?hash=${auditHash}`;
+  const verificationUrl = `https://nazil561.github.io/Regcat/?hash=${auditHash}`;
   const qrDataUrl = await QRCode.toDataURL(verificationUrl, { margin: 1, width: 120 });
   doc.addImage(qrDataUrl, 'PNG', 145, 15, 45, 45);
   doc.setFontSize(7);
