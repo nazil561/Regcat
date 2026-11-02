@@ -16,7 +16,6 @@ export default function App() {
   const [urlHash, setUrlHash] = useState(null);
 
   useEffect(() => {
-    // Check if user is accessing QR verification URL (?hash=...)
     const params = new URLSearchParams(window.location.search);
     const hash = params.get('hash');
     if (hash) {
@@ -24,11 +23,29 @@ export default function App() {
       setCurrentView('verify');
     }
 
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+    const timeout = setTimeout(() => {
+      console.warn('[Regcat] Auth init timeout — showing login page');
       setLoading(false);
-    });
-    return () => unsubscribe();
+    }, 3000);
+
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      (currentUser) => {
+        clearTimeout(timeout);
+        setUser(currentUser);
+        setLoading(false);
+      },
+      (error) => {
+        clearTimeout(timeout);
+        console.error('[Regcat] onAuthStateChanged error:', error?.code, error?.message);
+        setLoading(false);
+      }
+    );
+
+    return () => {
+      clearTimeout(timeout);
+      unsubscribe();
+    };
   }, []);
 
   if (currentView === 'verify') {
